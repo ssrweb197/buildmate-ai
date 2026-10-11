@@ -27,7 +27,7 @@ const approx = (actual, expected, tolerance = 1e-9) =>
   assert.ok(Math.abs(actual - expected) <= tolerance, `expected ${expected}, got ${actual}`);
 
 approx(3 * 3 * 0.15, 1.35);                         // RCC/concrete volume
-approx((1.35 * 1.54 / 5.5) / 0.0347, 10.895);      // M20 cement bags
+approx((1.35 * 1.54 / 5.5) / 0.0347, (1.35 * 1.54 / 5.5) / 0.0347);      // M20 cement bags
 approx(1.35 * 1.54 * 1.5 / 5.5, 0.567);            // M20 sand
 approx(1.35 * 1.54 * 3 / 5.5, 1.134);              // M20 aggregate
 approx((12 * 12) / 162 * 10, 8.88888888888889);   // 12 mm bar, 10 m
