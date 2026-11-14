@@ -31,6 +31,10 @@ const cases=[
 ];
 for(const [type,fn,inputs,expected] of cases){
  context.openCalc(type);
+ // The lightweight VM DOM does not parse generated HTML, so reproduce browser default select values.
+ if(type==="rcc") document.getElementById("mix").value="1,5,10";
+ if(["pcc","footing","column","beam","slab"].includes(type)) document.getElementById("mix").value="1,1.5,3";
+ if(["brick","plaster","mortar"].includes(type)) document.getElementById("ratio").value="5";
  for(const [id,value] of Object.entries(inputs)) document.getElementById(id).value=String(value);
  context[fn]();
  const out=elements.out.innerHTML;
