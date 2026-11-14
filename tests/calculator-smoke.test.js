@@ -31,13 +31,13 @@ const cases=[
 ];
 for(const [type,fn,inputs,expected] of cases){
  context.openCalc(type);
- for(const [id,value] of Object.entries(inputs)) elements[id].value=String(value);
+ for(const [id,value] of Object.entries(inputs)) document.getElementById(id).value=String(value);
  context[fn]();
  const out=elements.out.innerHTML;
  assert.ok(out.includes(expected),type+" output missing expected label: "+out);
  assert.ok(!out.includes("NaN")&&!out.includes("Infinity"),type+" produced invalid numeric output");
 }
-context.openCalc("steel");elements.d.value="0";elements.l.value="10";context.steel();
+context.openCalc("steel");document.getElementById("d").value="0";document.getElementById("l").value="10";context.steel();
 assert.match(elements.out.innerHTML,/Please enter a valid number/,"zero input must be rejected");
 console.log("PASS: "+cases.length+" calculator output smoke tests and zero-input validation.");
 console.log("Note: browser rendering, engineering validation and real-device testing still require separate QA.");
