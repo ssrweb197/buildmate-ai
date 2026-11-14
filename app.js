@@ -12,7 +12,7 @@ const tools=[
 ["Mortar","mortar","Cement and sand for mortar."],["BOQ Estimator","boq","Quick quantity × rate cost summary."]
 ];
 const cards=document.getElementById("cards");
-cards.innerHTML=tools.map(t=>`<article class="card"><h3>🔧 ${t[0]}</h3><p>${t[2]}</p><button onclick="openCalc('${t[1]}')">Calculate →</button></article>`).join("");
+cards.innerHTML=tools.map(t=>`<article class="card"><h3>🔧 ${t[0]}</h3><p>${t[2]}</p><button onclick="openCalc('${t[1]}')">Calculate →</button><a href="calculators/${t[1]}.html">Guide & details →</a></article>`).join("");
 
 const rates=[
 ["OPC 53 Grade Cement","₹395–420","per 50 kg bag"],["PPC Cement","₹355–380","per 50 kg bag"],
@@ -66,3 +66,5 @@ function slope(){const q=positive("r","run");if(!q)return;let r=q[0],run=q[1],pc
 function unit(){const q=positive("d","v");if(!q)return;let kg=q[0]*q[1];show(`Approximate weight: <b>${kg.toFixed(2)} kg</b> (${(kg/1000).toFixed(3)} tonnes)`)}
 function mortar(){const q=positive("a","t");if(!q)return;let wet=q[0]*q[1]/1000,dry=wet*1.33,r=Number(document.getElementById("ratio").value),c=dry/(r+1),s=dry-c;show(`Wet mortar: <b>${wet.toFixed(3)} m³</b><br>Cement: <b>${(c/.0347).toFixed(1)} bags</b><br>Sand: <b>${s.toFixed(3)} m³</b><br><small>Assumes dry-volume factor 1.33; actual consumption varies with sand moisture, mix and workmanship.</small>`)}
 function boq(){const q=positive("q","r");if(!q)return;show(`Item amount: <b>₹${(q[0]*q[1]).toLocaleString("en-IN")}</b>`)}
+
+(function(){const requestedTool=new URLSearchParams(window.location.search).get('tool');if(requestedTool&&tools.some(item=>item[1]===requestedTool)){openCalc(requestedTool);}})();
