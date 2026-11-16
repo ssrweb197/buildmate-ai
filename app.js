@@ -24,11 +24,13 @@ const rates=[
 document.getElementById("ratesBox").innerHTML=`<div class="rates">${rates.map(r=>`<div class="rate"><div><b>${r[0]}</b><small>Hyderabad</small></div><strong>${r[1]}<small>${r[2]}</small></strong></div>`).join("")}</div>`;
 
 const modal=document.getElementById("modal"),calc=document.getElementById("calc");
+let activeTool="";
 function f(id,label,unit=""){return `<div class="field"><label>${label}${unit?" ("+unit+")":""}</label><input id="${id}" type="number" min="0" step="any"></div>`}
 function n(id){const el=document.getElementById(id);return el&&el.value.trim()!==""?Number(el.value):0}
-function show(x){document.getElementById("out").innerHTML=`<div class="result">${x}</div>`}
+function show(x){const out=document.getElementById("out");out.innerHTML=`<div class="result">${x}<button class="add-boq-btn" onclick="addCurrentResultToBoq()">＋ Add this result to BOQ</button></div>`;}
 function positive(...ids){const values=ids.map(n);if(values.some(v=>!Number.isFinite(v)||v<=0)){show("Please enter a valid number greater than zero in every required field.");return null}return values}
 function openCalc(type){
+activeTool=type;
 let h="";
 if(type==="rcc")h=`<h2>RCC Material Estimator</h2>${f("l","Length","m")}${f("w","Width","m")}${f("d","Depth","m")}<div class="field"><label>Grade</label><select id="mix"><option value="1,5,10">M5 — 1:5:10</option><option value="1,4,8">M7.5 — 1:4:8</option><option value="1,3,6">M10 — 1:3:6</option><option value="1,2,4">M15 — 1:2:4</option><option value="1,1.5,3">M20 — 1:1.5:3</option><option value="design">M25–M40 — Design mix</option></select></div><button class="calc-btn" onclick="rcc()">Calculate</button><div id="out"></div>`;
 if(type==="brick")h=`<h2>Brick Work</h2>${f("l","Wall length","m")}${f("w","Wall height","m")}${f("d","Wall thickness","m")}<div class="field"><label>Mortar ratio</label><select id="ratio"><option>4</option><option selected>5</option><option>6</option></select></div><button class="calc-btn" onclick="brick()">Calculate</button><div id="out"></div>`;
@@ -66,5 +68,47 @@ function slope(){const q=positive("r","run");if(!q)return;let r=q[0],run=q[1],pc
 function unit(){const q=positive("d","v");if(!q)return;let kg=q[0]*q[1];show(`Approximate weight: <b>${kg.toFixed(2)} kg</b> (${(kg/1000).toFixed(3)} tonnes)`)}
 function mortar(){const q=positive("a","t");if(!q)return;let wet=q[0]*q[1]/1000,dry=wet*1.33,r=Number(document.getElementById("ratio").value),c=dry/(r+1),s=dry-c;show(`Wet mortar: <b>${wet.toFixed(3)} m³</b><br>Cement: <b>${(c/.0347).toFixed(1)} bags</b><br>Sand: <b>${s.toFixed(3)} m³</b><br><small>Assumes dry-volume factor 1.33; actual consumption varies with sand moisture, mix and workmanship.</small>`)}
 function boq(){const q=positive("q","r");if(!q)return;show(`Item amount: <b>₹${(q[0]*q[1]).toLocaleString("en-IN")}</b>`)}
+
+const BOQ_STORAGE_KEY="buildmateai_boq_v1";
+let boqItems=loadBoq();
+function loadBoq(){try{return JSON.parse(localStorage.getItem(BOQ_STORAGE_KEY)||"[]")}catch(e){return []}}
+function saveBoq(){try{localStorage.setItem(BOQ_STORAGE_KEY,JSON.stringify(boqItems))}catch(e){alert("Could not save BOQ in this browser. Check available storage.")}}
+function escapeBoq(value){return String(value??"").replace(/[&<>"']/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]})}
+function addCurrentResultToBoq(){
+ const tool=tools.find(item=>item[1]===activeTool);
+ const output=document.querySelector("#out .result");
+ if(!tool||!output)return;
+ const notes=output.innerText.replace(/＋ Add this result to BOQ/g,"").trim();
+ boqItems.push({name:tool[0],quantity:"1",unit:"item",rate:"0",notes:notes});
+ saveBoq();renderBoq();
+ const button=output.querySelector(".add-boq-btn");
+ if(button){button.textContent="Added to BOQ ✓";button.disabled=true;}
+}
+function updateBoqItem(index,key,value){
+ if(!boqItems[index])return;
+ boqItems[index][key]=value;saveBoq();renderBoqTotals();
+}
+function removeBoqItem(index){boqItems.splice(index,1);saveBoq();renderBoq();}
+function clearBoq(){if(!boqItems.length)return;if(!confirm("Clear all items from this BOQ basket?"))return;boqItems=[];saveBoq();renderBoq();}
+function renderBoqTotals(){
+ const total=boqItems.reduce((sum,item)=>sum+(Math.max(0,Number(item.quantity)||0)*Math.max(0,Number(item.rate)||0)),0);
+ const el=document.getElementById("boq-totals");
+ if(el)el.innerHTML=boqItems.length?'<strong>Estimated total: ₹'+total.toLocaleString("en-IN",{maximumFractionDigits:2})+'</strong><small>Line amounts use quantity × rate.</small>':"No items added yet.";
+}
+function renderBoq(){
+ const host=document.getElementById("boq-items");if(!host)return;
+ if(!boqItems.length){host.innerHTML='<p class="boq-empty">No calculator results added. Open a calculator, calculate a result and tap “Add this result to BOQ”.</p>';renderBoqTotals();return;}
+ host.innerHTML=boqItems.map((item,i)=>'<article class="boq-item"><div class="boq-item-head"><h3>'+escapeBoq(item.name)+'</h3><button class="remove-boq" onclick="removeBoqItem('+i+')">Remove</button></div><div class="boq-fields"><label>Quantity<input type="number" min="0" step="any" value="'+escapeBoq(item.quantity)+'" onchange="updateBoqItem('+i+',\'quantity\',this.value)"></label><label>Unit<input type="text" value="'+escapeBoq(item.unit)+'" onchange="updateBoqItem('+i+',\'unit\',this.value)"></label><label>Rate (₹)<input type="number" min="0" step="any" value="'+escapeBoq(item.rate)+'" onchange="updateBoqItem('+i+',\'rate\',this.value)"></label></div><p class="boq-notes">'+escapeBoq(item.notes).replace(/\n/g,"<br>")+'</p><strong>Line amount: ₹'+((Math.max(0,Number(item.quantity)||0)*Math.max(0,Number(item.rate)||0)).toLocaleString("en-IN",{maximumFractionDigits:2}))+'</strong></article>').join("");
+ renderBoqTotals();
+}
+function boqReportHtml(){
+ const total=boqItems.reduce((sum,item)=>sum+(Math.max(0,Number(item.quantity)||0)*Math.max(0,Number(item.rate)||0)),0);
+ const rows=boqItems.map((item,i)=>'<tr><td>'+(i+1)+'</td><td>'+escapeBoq(item.name)+'<br><small>'+escapeBoq(item.notes).replace(/\n/g,"<br>")+'</small></td><td>'+escapeBoq(item.quantity)+'</td><td>'+escapeBoq(item.unit)+'</td><td>₹'+(Number(item.rate)||0).toLocaleString("en-IN")+'</td><td>₹'+((Math.max(0,Number(item.quantity)||0)*Math.max(0,Number(item.rate)||0)).toLocaleString("en-IN",{maximumFractionDigits:2}))+'</td></tr>').join("");
+ return '<!doctype html><html><head><meta charset="utf-8"><title>BuildMate AI - BOQ Summary</title><style>body{font:14px Arial,sans-serif;color:#172033;padding:28px}h1{color:#10233f}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccd5e1;padding:9px;text-align:left;vertical-align:top}th{background:#eef3f9}small{color:#58677a}.total{text-align:right;font-size:20px;font-weight:bold;margin-top:22px}@media print{body{padding:0}}</style></head><body><h1>BuildMate AI - BOQ Summary</h1><p>Prepared on '+new Date().toLocaleString("en-IN")+'</p><table><thead><tr><th>#</th><th>Item / Calculator Result</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Amount</th></tr></thead><tbody>'+rows+'</tbody></table><p class="total">Estimated Total: ₹'+total.toLocaleString("en-IN",{maximumFractionDigits:2})+'</p><p><small>Preliminary estimate only. Verify measurements, rates, taxes, specifications and site conditions before procurement or execution.</small></p></body></html>';
+}
+function exportBoqPDF(){if(!boqItems.length){alert("Add at least one calculator result to the BOQ first.");return;}const win=window.open("","_blank");if(!win){alert("Please allow pop-ups to print or save the BOQ PDF.");return;}win.document.open();win.document.write(boqReportHtml());win.document.close();win.onload=function(){win.focus();win.print();};}
+function exportBoqText(){if(!boqItems.length){alert("Add at least one calculator result to the BOQ first.");return;}const lines=["BUILDMATE AI - BOQ SUMMARY","Prepared: "+new Date().toLocaleString("en-IN"),"","S.No | Item | Quantity | Unit | Rate (INR) | Amount (INR)"];let total=0;boqItems.forEach((item,i)=>{const amount=Math.max(0,Number(item.quantity)||0)*Math.max(0,Number(item.rate)||0);total+=amount;lines.push((i+1)+" | "+item.name+" | "+item.quantity+" | "+item.unit+" | "+item.rate+" | "+amount.toFixed(2));lines.push("Result details: "+item.notes.replace(/\n/g,"; "));});lines.push("","Estimated Total (INR): "+total.toFixed(2),"Preliminary estimate only. Verify all project quantities, rates and specifications.");const blob=new Blob([lines.join("\n")],{type:"text/plain;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="BuildMate-BOQ-Summary.txt";a.click();URL.revokeObjectURL(url);}
+renderBoq();
+
 
 (function(){const requestedTool=new URLSearchParams(window.location.search).get('tool');if(requestedTool&&tools.some(item=>item[1]===requestedTool)){openCalc(requestedTool);}})();
