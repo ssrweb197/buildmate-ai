@@ -12,7 +12,18 @@ const tools=[
 ["Mortar","mortar","Cement and sand for mortar."],["BOQ Estimator","boq","Quick quantity × rate cost summary."]
 ];
 const cards=document.getElementById("cards");
-cards.innerHTML=tools.map(t=>`<article class="card"><h3>🔧 ${t[0]}</h3><p>${t[2]}</p><button onclick="openCalc('${t[1]}')">Calculate →</button><a href="calculators/${t[1]}.html">Guide & details →</a></article>`).join("");
+const toolGroups={rcc:"concrete",pcc:"concrete",footing:"concrete",column:"concrete",beam:"concrete",slab:"concrete",steel:"concrete",brick:"masonry",plaster:"masonry",flooring:"masonry",paint:"masonry",block:"masonry",mortar:"masonry",concrete:"measure",area:"measure",stair:"measure",slope:"measure",unit:"measure",excavation:"measure",cost:"estimate",boq:"estimate"};
+function renderToolCards(){
+ const query=document.getElementById("tool-search").value.trim().toLowerCase();
+ const active=document.querySelector(".tool-filters button.active").dataset.filter;
+ const filtered=tools.filter(t=>(active==="all"||toolGroups[t[1]]===active)&&(!query||t.join(" ").toLowerCase().includes(query)));
+ cards.innerHTML=filtered.map(t=>'<article class="card"><h3>🔧 '+t[0]+'</h3><p>'+t[2]+'</p><button onclick="openCalc(\''+t[1]+'\')">Calculate →</button><a href="calculators/'+t[1]+'.html">Guide & details →</a></article>').join("");
+ document.getElementById("tool-count").textContent=filtered.length+" of "+tools.length+" calculators shown";
+ if(!filtered.length) cards.innerHTML='<div class="tool-empty">No matching calculator. Try another keyword or choose All tools.</div>';
+}
+renderToolCards();
+document.getElementById("tool-search").addEventListener("input",renderToolCards);
+document.querySelectorAll(".tool-filters button").forEach(button=>button.addEventListener("click",()=>{document.querySelector(".tool-filters button.active").classList.remove("active");button.classList.add("active");renderToolCards();}));
 
 const rates=[
 ["OPC 53 Grade Cement","₹395–420","per 50 kg bag"],["PPC Cement","₹355–380","per 50 kg bag"],
